@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-
 void main() {
   runApp(const MyApp());
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -24,29 +22,58 @@ class MyApp extends StatelessWidget {
               Icons.camera,
               Icons.photo,
             ],
-            builder: (icon, isHovered, isDragging) {
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                width: isHovered ? 80 : 64,
-                height: isHovered ? 80 : 64,
-                margin: const EdgeInsets.all(8),
+            labels: const [
+              'Profile',
+              'Messages',
+              'Calls',
+              'Camera',
+              'Photos',
+            ],
+            builder: (icon, label, isHovered, isDragging) {
+              return Tooltip(
+                message: label,
+                textStyle: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.primaries[icon.hashCode % Colors.primaries.length],
-                  boxShadow: [
+                  color: Colors.black87,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: const [
                     BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: isHovered ? 20 : 10,
-                      offset: Offset(0, isHovered ? 6 : 3),
+                      color: Colors.black38,
+                      blurRadius: 6,
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Center(
-                  child: Icon(
-                    icon,
-                    color: Colors.white,
-                    size: isHovered ? 36 : 28,
+                verticalOffset: 50,
+                preferBelow: false,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  width: isHovered ? 80 : 64,
+                  height: isHovered ? 80 : 64,
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Colors
+                        .primaries[icon.hashCode % Colors.primaries.length],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: isHovered ? 20 : 10,
+                        offset: Offset(0, isHovered ? 6 : 3),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: isHovered ? 36 : 28,
+                    ),
                   ),
                 ),
               );
@@ -58,27 +85,27 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
 class Dock<T extends Object> extends StatefulWidget {
   const Dock({
     super.key,
     this.items = const [],
+    this.labels = const [],
     required this.builder,
   });
 
-  
   final List<T> items;
+  final List<String> labels;
 
-  
-  final Widget Function(T item, bool isHovered, bool isDragging) builder;
+  final Widget Function(T item, String label, bool isHovered, bool isDragging)
+      builder;
 
   @override
   State<Dock<T>> createState() => _DockState<T>();
 }
 
 class _DockState<T extends Object> extends State<Dock<T>> {
-  
   late final List<T> _items = widget.items.toList();
+  late final List<String> _labels = widget.labels.toList();
   int? _hoverIndex;
   int? _draggingIndex;
 
@@ -94,11 +121,12 @@ class _DockState<T extends Object> extends State<Dock<T>> {
         mainAxisSize: MainAxisSize.min,
         children: List.generate(_items.length, (index) {
           final item = _items[index];
+          final label = _labels[index];
           final isHovered = _hoverIndex == index;
           final isDragging = _draggingIndex == index;
 
           return DragTarget<T>(
-            onWillAccept: (data) {
+            onWillAcceptWithDetails: (detail) {
               setState(() {
                 _hoverIndex = index;
               });
@@ -109,26 +137,24 @@ class _DockState<T extends Object> extends State<Dock<T>> {
                 _hoverIndex = null;
               });
             },
-            onAccept: (data) {
+            onAcceptWithDetails: (details) {
               final fromIndex = _draggingIndex!;
               final toIndex = index;
 
               setState(() {
-                final removed = _items.removeAt(fromIndex);
-                _items.insert(toIndex, removed);
+                final removedItem = _items.removeAt(fromIndex);
+                _items.insert(toIndex, removedItem);
+
+                final removedLabel = _labels.removeAt(fromIndex);
+                _labels.insert(toIndex, removedLabel);
+
                 _draggingIndex = null;
                 _hoverIndex = null;
               });
             },
             builder: (context, candidateData, rejectedData) {
-              return LongPressDraggable<T>(
-                data: item,
+              return Draggable(
                 dragAnchorStrategy: pointerDragAnchorStrategy,
-                feedback: Material(
-                  color: Colors.transparent,
-                  child: widget.builder(item, true, true),
-                ),
-                childWhenDragging: const SizedBox.shrink(),
                 onDragStarted: () {
                   setState(() {
                     _draggingIndex = index;
@@ -140,6 +166,12 @@ class _DockState<T extends Object> extends State<Dock<T>> {
                     _hoverIndex = null;
                   });
                 },
+                data: item,
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: widget.builder(item, label, true, true),
+                ),
+                childWhenDragging: const SizedBox.shrink(),
                 child: MouseRegion(
                   onEnter: (_) {
                     setState(() {
@@ -151,7 +183,7 @@ class _DockState<T extends Object> extends State<Dock<T>> {
                       if (_hoverIndex == index) _hoverIndex = null;
                     });
                   },
-                  child: widget.builder(item, isHovered, isDragging),
+                  child: widget.builder(item, label, isHovered, isDragging),
                 ),
               );
             },
